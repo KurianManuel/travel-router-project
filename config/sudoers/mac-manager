@@ -1,0 +1,6 @@
+# Allow www-data user (Flask) to manage MAC address configuration
+# Location: /etc/sudoers.d/mac-manager
+
+www-data ALL=(ALL) NOPASSWD: /bin/mv /tmp/mac-manager.conf /etc/mac-manager.conf
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart mac-manager.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl status mac-manager.service

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Manager - Travel Router</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        /* WiFi Manager Specific Styles */
+        .wifi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .wifi-title {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--text-1);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text-1);
+            border: 1px solid var(--border);
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .network-list {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .network-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .network-item:last-child { border-bottom: none; }
+        .network-item:hover { background: var(--surface-2); }
+        .network-item.current { background: var(--green-bg); }
+
+        .network-info {
+            flex: 1;
+        }
+
+        .network-ssid {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .network-details {
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .network-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .badge-safe { background: var(--green-bg); color: var(--green); }
+        .badge-warning { background: var(--amber-bg); color: var(--amber); }
+        .badge-danger { background: var(--red-bg); color: var(--red); }
+        .badge-encryption { background: var(--surface-2); color: var(--text-2); }
+
+        .network-signal {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .signal-bars {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .signal-bar {
+            width: 4px;
+            background: var(--border-dark);
+            border-radius: 2px;
+        }
+
+        .signal-bar.active { background: var(--text-1); }
+        .signal-bar:nth-child(1) { height: 6px; }
+        .signal-bar:nth-child(2) { height: 12px; }
+        .signal-bar:nth-child(3) { height: 18px; }
+        .signal-bar:nth-child(4) { height: 24px; }
+
+        .warning-box {
+            background: var(--amber-bg);
+            border: 1px solid var(--amber-border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--amber);
+        }
+
+        .warning-box ul {
+            margin: 8px 0 0 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-2);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg);
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--border-dark);
+            background: var(--surface);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons .btn { flex: 1; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-3);
+        }
+
+        .spinner-lg {
+            width: 32px; height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--text-1);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="topbar-mark">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <span class="topbar-title">WiFi Manager</span>
+    </div>
+    <div class="topbar-right">
+        <a href="/" class="logout-link">← Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="wifi-header">
+        <h1 class="wifi-title">Available Networks</h1>
+        <button class="btn btn-primary" onclick="scanNetworks()" id="scanBtn">
+            <span id="scanBtnText">Scan Networks</span>
+            <span class="spin" id="scanSpinner"></span>
+        </button>
+    </div>
+
+    <div id="currentNetwork" style="display: none;" class="warning-box">
+        <strong>Currently connected:</strong> <span id="currentSsid"></span>
+    </div>
+
+    <div id="loadingState" class="loading">
+        <div class="spinner-lg"></div>
+        <div>Scanning for networks...</div>
+    </div>
+
+    <div id="networkList" class="network-list" style="display: none;"></div>
+</div>
+
+<!-- Password Modal -->
+<div class="modal" id="passwordModal">
+    <div class="modal-content">
+        <h2 class="modal-title">Connect to Network</h2>
+        <div class="form-group">
+            <label class="form-label">SSID</label>
+            <input type="text" class="form-input" id="modalSsid" readonly>
+        </div>
+        <div class="form-group">
+            <label class="form-label">BSSID</label>
+            <input type="text" class="form-input" id="modalBssid" readonly>
+        </div>
+        <div class="form-group" id="passwordGroup">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="modalPassword" placeholder="Enter WiFi password">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="connectToNetwork()" id="connectBtn">Connect</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedNetwork = null;
+
+// Scan on page load
+window.addEventListener('DOMContentLoaded', () => {
+    getCurrentNetwork();
+    scanNetworks();
+});
+
+async function getCurrentNetwork() {
+    try {
+        const res = await fetch('/api/wifi/current');
+        const data = await res.json();
+        if (data.connected && data.ssid) {
+            document.getElementById('currentNetwork').style.display = 'block';
+            document.getElementById('currentSsid').textContent = `${data.ssid} (${data.bssid || 'unknown'})`;
+        }
+    } catch (err) {
+        console.error('Failed to get current network:', err);
+    }
+}
+
+async function scanNetworks() {
+    const btn = document.getElementById('scanBtn');
+    const btnText = document.getElementById('scanBtnText');
+    const spinner = document.getElementById('scanSpinner');
+    
+    btn.disabled = true;
+    btnText.classList.add('hidden');
+    spinner.style.display = 'block';
+    
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('networkList').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/wifi/scan', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            displayNetworks(data.networks);
+        } else {
+            alert('Scan failed: ' + data.error);
+        }
+    } catch (err) {
+        alert('Scan error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btnText.classList.remove('hidden');
+        spinner.style.display = 'none';
+        document.getElementById('loadingState').style.display = 'none';
+    }
+}
+
+function displayNetworks(networks) {
+    const list = document.getElementById('networkList');
+    list.innerHTML = '';
+    list.style.display = 'block';
+    
+    if (!networks || networks.length === 0) {
+        list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-3);">No networks found</div>';
+        return;
+    }
+    
+    networks.forEach(net => {
+        const item = document.createElement('div');
+        item.className = 'network-item';
+        item.onclick = () => showConnectModal(net);
+        
+        const signalBars = getSignalBars(net.signal_dbm);
+        const safetyClass = net.safety_level === 'danger' ? 'badge-danger' : 
+                           net.safety_level === 'warning' ? 'badge-warning' : 'badge-safe';
+        
+        let warningsHtml = '';
+        if (net.warnings && net.warnings.length > 0) {
+            warningsHtml = '<div class="network-badges">';
+            net.warnings.forEach(w => {
+                warningsHtml += `<span class="badge ${safetyClass}">${w}</span>`;
+            });
+            warningsHtml += '</div>';
+        }
+        
+        item.innerHTML = `
+            <div class="network-info">
+                <div class="network-ssid">${net.ssid || '<hidden>'}</div>
+                <div class="network-details">
+                    ${net.bssid} • Ch ${net.channel} • ${net.encryption}
+                </div>
+                ${warningsHtml}
+            </div>
+            <div class="network-signal">
+                <div class="signal-bars">${signalBars}</div>
+            </div>
+        `;
+        
+        list.appendChild(item);
+    });
+}
+
+function getSignalBars(dbm) {
+    let bars = '';
+    const strength = dbm > -50 ? 4 : dbm > -60 ? 3 : dbm > -70 ? 2 : 1;
+    for (let i = 1; i <= 4; i++) {
+        bars += `<div class="signal-bar ${i <= strength ? 'active' : ''}"></div>`;
+    }
+    return bars;
+}
+
+function showConnectModal(network) {
+    selectedNetwork = network;
+    document.getElementById('modalSsid').value = network.ssid;
+    document.getElementById('modalBssid').value = network.bssid;
+    document.getElementById('modalPassword').value = '';
+    
+    if (network.encryption === 'Open') {
+        document.getElementById('passwordGroup').style.display = 'none';
+    } else {
+        document.getElementById('passwordGroup').style.display = 'block';
+    }
+    
+    document.getElementById('passwordModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('passwordModal').classList.remove('active');
+    selectedNetwork = null;
+}
+
+async function connectToNetwork() {
+    if (!selectedNetwork) return;
+    
+    const password = document.getElementById('modalPassword').value;
+    
+    if (selectedNetwork.encryption !== 'Open' && !password) {
+        alert('Password required for encrypted network');
+        return;
+    }
+    
+    const btn = document.getElementById('connectBtn');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    
+    try {
+        const res = await fetch('/api/wifi/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ssid: selectedNetwork.ssid,
+                bssid: selectedNetwork.bssid,
+                password: password
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('Connected successfully!\n\nSSID: ' + data.ssid + '\nVPN: Established');
+            closeModal();
+            window.location.href = '/';
+        } else {
+            let errorMsg = 'Connection failed:\n\n' + data.error;
+            
+            // Special handling for captive portal case
+            if (data.connected_but_no_internet) {
+                errorMsg += '\n\n⚠️ The network connected but has no internet.\n\nPossible causes:\n• Captive portal (requires web login)\n• Network has no internet gateway\n• Firewall blocking traffic\n\nTry a different network or use your phone to login to the captive portal first.';
+            }
+            
+            alert(errorMsg);
+        }
+    } catch (err) {
+        alert('Connection error:\n\n' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Connect';
+    }
+}
+</script>
+
+</body>
+</html>

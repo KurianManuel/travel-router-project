@@ -1,0 +1,21 @@
+[Unit]
+Description=MAC Address Manager for wlan0
+Before=NetworkManager.service
+Before=wpa_supplicant.service
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mac-manager.sh
+RemainAfterExit=yes
+
+# Restart policy
+Restart=no
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

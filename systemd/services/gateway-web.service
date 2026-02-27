@@ -1,0 +1,14 @@
+[Unit]
+Description=Travel Router Web Interface
+After=network.target usb0-static.service dnsmasq.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/gateway-web
+ExecStart=/opt/gateway-web/venv/bin/python3 /opt/gateway-web/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

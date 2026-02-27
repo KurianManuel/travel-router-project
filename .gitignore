@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+*.tmp
+
+# Sensitive files
+*.key
+*.pem
+*.conf.backup
+secrets/
+wireguard/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.bak
+*.backup
+tmp/
+temp/
+
+# Build artifacts
+build/
+dist/

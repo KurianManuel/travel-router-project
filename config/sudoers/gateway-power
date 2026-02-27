@@ -1,0 +1,4 @@
+# Allow www-data user (Flask) to run shutdown commands without password
+# Location: /etc/sudoers.d/gateway-power
+
+www-data ALL=(ALL) NOPASSWD: /sbin/shutdown

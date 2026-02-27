@@ -1,0 +1,14 @@
+[Unit]
+Description=VPN Watchdog Tier 1 (SAFE, MANUAL START)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/watchdog-tier1.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+

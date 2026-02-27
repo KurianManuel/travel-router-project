@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Router</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Styles: load order matters — base first -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<!-- ══ Login screen ═══════════════════════════════════════════ -->
+<div class="login-wrap" id="loginScreen">
+    <div class="login-card">
+
+        <div class="login-mark">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+        </div>
+
+        <h1 class="login-heading">Travel Router</h1>
+        <p  class="login-sub">USB Internet Gateway</p>
+
+        <form id="loginForm">
+            <label class="field-label" for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                class="field-input"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                required>
+
+            <button type="submit" class="login-btn">
+                <span  id="loginBtnText">Access Gateway</span>
+                <span class="spin" id="loginSpinner"></span>
+            </button>
+        </form>
+
+        <p class="login-note">Local authentication only &middot; No cloud connection</p>
+    </div>
+</div>
+
+<!-- ══ Dashboard ══════════════════════════════════════════════ -->
+<div class="dashboard" id="dashboard">
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-mark">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <span class="topbar-title">Travel Router</span>
+            <span class="topbar-time" id="currentTime"></span>
+        </div>
+        <div class="topbar-right">
+            <div class="vpn-pill up" id="vpnPill">
+                <span class="dot"></span>
+                <span id="vpnPillText">VPN Active</span>
+            </div>
+            <div class="vpn-pill down" id="internetPill">
+                <span class="dot"></span>
+                <span id="internetPillText">Internet Down</span>
+            </div>
+            <a href="/wifi" class="logout-link" style="text-decoration: none;">WiFi</a>
+            <div class="power-menu">
+                <button class="logout-link" onclick="togglePowerMenu()">Power ▾</button>
+                <div class="power-dropdown" id="powerDropdown">
+                    <button onclick="shutdownSystem()">Shutdown</button>
+                    <button onclick="rebootSystem()">Reboot</button>
+                </div>
+            </div>
+            <button class="logout-link" onclick="logout()">Log out</button>
+        </div>
+    </div>
+
+    <!-- Page content -->
+    <div class="page">
+
+        <!-- Firewall state banner -->
+        <div class="state-banner" id="stateBanner">
+            <div>
+                <div class="state-label">Firewall State</div>
+                <div class="state-value" id="firewallState">Loading</div>
+                <div class="state-desc"  id="firewallDesc">Fetching system status...</div>
+            </div>
+            <div class="state-badge" id="stateBadge">—</div>
+        </div>
+
+        <!-- System status -->
+        <div class="section-title">System Status</div>
+        <div class="status-grid">
+
+            <div class="stat-cell">
+                <div class="stat-name">VPN</div>
+                <div class="stat-value" id="vpnStatus">—</div>
+                <div class="stat-sub"   id="vpnHandshake">—</div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Watchdog</div>
+                <div class="stat-value" id="watchdogStatus">—</div>
+                <div class="stat-sub"   id="watchdogSub">—</div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Wi-Fi</div>
+                <div class="stat-value" id="wifiSsid">—</div>
+                <div class="stat-sub">Active uplink</div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Uptime</div>
+                <div class="stat-value" id="uptime">—</div>
+                <div class="stat-sub">Since last reboot</div>
+            </div>
+
+        </div>
+
+        <!-- Gateway controls -->
+        <div class="section-title">Gateway Controls</div>
+        <div class="controls-grid">
+
+            <button class="ctrl-btn" id="enableBtn" onclick="enableInternet()">
+                <div class="ctrl-title">Enable Internet</div>
+                <div class="ctrl-desc" id="enableBtnDesc">
+                    Opens VPN-only routing and arms the watchdog kill-switch
+                </div>
+            </button>
+
+            <button class="ctrl-btn ctrl-danger" onclick="forceLockdown()">
+                <div class="ctrl-title">Force Lockdown</div>
+                <div class="ctrl-desc">
+                    Immediately blocks all internet traffic (fail-closed)
+                </div>
+            </button>
+
+        </div>
+
+        <!-- Network details -->
+        <div class="section-title">Network Details</div>
+        <div class="info-grid">
+
+            <div class="info-card">
+                <div class="info-card-head">Network</div>
+                <div class="info-row">
+                    <span class="info-key">PC Interface</span>
+                    <span class="info-val" id="pcInterface">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Gateway</span>
+                    <span class="info-val">192.168.7.1</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">VPN Tunnel</span>
+                    <span class="info-val" id="vpnTunnel">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">WAN Interface</span>
+                    <span class="info-val" id="wanInterface">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">MAC Address</span>
+                    <span class="info-val" id="macAddress">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">MAC Mode</span>
+                    <span class="info-val" id="macMode">
+                        <span id="macModeText">—</span>
+                        <button class="inline-btn" onclick="openMacConfig()" style="margin-left: 8px;">Configure</button>
+                    </span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-head">System Info</div>
+                <div class="info-row">
+                    <span class="info-key">Device</span>
+                    <span class="info-val" id="deviceName">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">OS</span>
+                    <span class="info-val" id="osName">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">VPN Protocol</span>
+                    <span class="info-val" id="vpnProtocol">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Internet Status</span>
+                    <span class="info-val" id="internetStatus">Checking...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Connected Devices</span>
+                    <span class="info-val" id="connectedDevices">—</span>
+                </div>
+            </div>
+
+        </div>
+
+    <!-- MAC Address Configuration Modal -->
+    <div class="modal" id="macConfigModal">
+        <div class="modal-content">
+            <h2>MAC Address Configuration</h2>
+            
+            <div class="form-group">
+                <label>Current MAC Address</label>
+                <input type="text" id="currentMacDisplay" readonly style="background: var(--surface-2);">
+            </div>
+            
+            <div class="form-group">
+                <label>Mode</label>
+                <select id="macModeSelect" onchange="updateMacFields()">
+                    <option value="random">Random (Privacy) - New MAC every boot</option>
+                    <option value="clone">Clone - Appear as another device</option>
+                    <option value="persistent">Persistent - Same fake MAC always</option>
+                    <option value="original">Original - Use hardware MAC</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="cloneMacGroup" style="display: none;">
+                <label>MAC Address to Clone</label>
+                <input type="text" id="cloneMacInput" placeholder="aa:bb:cc:dd:ee:ff">
+                <small style="color: var(--text-2); display: block; margin-top: 4px;">
+                    Enter the MAC address you want to clone (e.g., your phone's MAC)
+                </small>
+            </div>
+            
+            <div class="modal-info">
+                <div id="modeDescription"></div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn" onclick="closeMacConfig()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="saveMacConfig()">Save Configuration</button>
+                <button class="modal-btn" onclick="regenerateMac()" id="regenerateBtn" style="display: none;">
+                    Regenerate Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /page -->
+</div><!-- /dashboard -->
+
+<!-- Scripts: load order matters — api and ui before main -->
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>
