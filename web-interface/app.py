@@ -151,7 +151,7 @@ class StatusParser:
                 elif 'Status: DOWN' in line:
                     data['vpn']['status'] = 'DOWN'
                     data['vpn']['connected'] = False
-					data['vpn']['present'] = False
+                    data['vpn']['present'] = False
                 elif 'wg0 present but no handshake yet' in line:
                     data['vpn']['present'] = True
                     data['vpn']['connected'] = False
@@ -187,7 +187,7 @@ class StatusParser:
                     range_text = line.split('Range:', 1)[1].strip()
                     data['dhcp']['range'] = range_text
                 elif 'Active DHCP leases:' in line: 
-				count = re.search(r'(\d+)', line)
+                    count = re.search(r'(\d+)', line)
                     if count:
                         data['dhcp']['active_leases'] = int(count.group(1))
                 elif 'No active DHCP leases' in line:
@@ -225,7 +225,7 @@ def get_system_status():
         return None
     except Exception as e:
         print(f"ERROR: Exception running status script: {e}")
-		return None
+        return None
 
 def get_system_uptime():
     """Get system uptime"""
@@ -263,7 +263,7 @@ def check_internet_connectivity():
 
         if is_connected:
             logger.info("[Internet Check] Ping to 1.1.1.1: SUCCESS")
-			 print("[Internet Check] Ping to 1.1.1.1: SUCCESS", flush=True)
+            print("[Internet Check] Ping to 1.1.1.1: SUCCESS", flush=True)
         else:
             logger.warning(f"[Internet Check] Ping to 1.1.1.1: FAILED (code: {result.returncode})")
             logger.warning(f"[Internet Check] STDERR: {result.stderr}")
@@ -311,7 +311,8 @@ def get_system_info():
                 if line.startswith('PRETTY_NAME='):
                     os_name = line.split('=', 1)[1].strip().strip('"')
                     system_info['os'] = os_name
-                    breakexcept:
+                    break
+    except:
             pass
 
     try:
@@ -668,7 +669,7 @@ def api_mac_configure():
         clone_mac = data.get('clone_mac', '')
 
         if mode not in ['random', 'clone', 'persistent', 'original']:
-		 return jsonify({'success': False, 'error': 'Invalid mode'}), 400
+            return jsonify({'success': False, 'error': 'Invalid mode'}), 400
 
         if mode in ['clone', 'persistent'] and clone_mac:
             if not re.match(r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$', clone_mac):
