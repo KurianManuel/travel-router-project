@@ -74,6 +74,7 @@
                 <span id="internetPillText">Internet Down</span>
             </div>
             <a href="/wifi" class="logout-link" style="text-decoration: none;">WiFi</a>
+            <a href="/arp-monitor" class="logout-link" style="text-decoration: none;">ARP Monitor</a>
             <div class="power-menu">
                 <button class="logout-link" onclick="togglePowerMenu()">Power ▾</button>
                 <div class="power-dropdown" id="powerDropdown">
@@ -253,6 +254,18 @@
 
     </div><!-- /page -->
 </div><!-- /dashboard -->
+
+<!-- Alert Notification -->
+<div class="alert-notification" id="alertNotification">
+    <div class="alert-content">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">
+            <div class="alert-title" id="alertTitle">Security Alert</div>
+            <div class="alert-message" id="alertMessage">ARP spoofing detected!</div>
+        </div>
+        <button class="alert-close" onclick="closeAlert()">×</button>
+    </div>
+</div>
 
 <!-- Scripts: load order matters — api and ui before main -->
 <script src="{{ url_for('static', filename='js/api.js') }}"></script>

@@ -1,0 +1,24 @@
+[Unit]
+Description=ARP Spoofing Detection Monitor
+Documentation=man:arp-monitor(8)
+After=network-online.target
+Wants=network-online.target
+PartOf=gateway-security.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/arp-monitor.sh
+Restart=always
+RestartSec=5
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=arp-monitor
+
+[Install]
+WantedBy=multi-user.target

@@ -276,3 +276,63 @@ document.addEventListener('click', function(e) {
         closeMacConfig();
     }
 });
+
+// ═══════════════════════════════════════════════════════════
+// ARP Monitor Alert System
+// ═══════════════════════════════════════════════════════════
+
+let lastAlertCheck = 0;
+
+async function checkArpAlerts() {
+    try {
+        const response = await fetch('/api/arp/status');
+        const data = await response.json();
+        
+        if (data.success && data.status) {
+            const status = data.status;
+            
+            // Check if gateway MAC has changed (mismatch)
+            if (status.learned_mac && status.current_gateway_mac && 
+                status.learned_mac.toLowerCase() !== status.current_gateway_mac.toLowerCase()) {
+                
+                // Show alert if we haven't shown it recently
+                const now = Date.now();
+                if (now - lastAlertCheck > 60000) {  // Once per minute max
+                    showAlert(
+                        'ARP Spoofing Detected!',
+                        `Gateway MAC changed from ${status.learned_mac} to ${status.current_gateway_mac}. System may be locked down.`
+                    );
+                    lastAlertCheck = now;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to check ARP alerts:', error);
+    }
+}
+
+function showAlert(title, message) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertNotification').classList.add('show');
+    
+    // Play alert sound (if you want to add one later)
+    // new Audio('/static/sounds/alert.mp3').play().catch(e => {});
+    
+    // Auto-dismiss after 30 seconds
+    setTimeout(() => {
+        closeAlert();
+    }, 30000);
+}
+
+function closeAlert() {
+    document.getElementById('alertNotification').classList.remove('show');
+}
+
+// Check for ARP alerts every 10 seconds
+setInterval(checkArpAlerts, 10000);
+
+// Check immediately on load
+if (document.getElementById('dashboard').classList.contains('active')) {
+    checkArpAlerts();
+}

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARP Monitor - Travel Router</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        .arp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .arp-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-1);
+        }
+        
+        .back-link {
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.15s;
+        }
+        
+        .back-link:hover {
+            color: var(--text-1);
+        }
+        
+        .status-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .status-card-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-2);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-indicator.active {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+        
+        .status-indicator.inactive {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .arp-btn {
+            flex: 1;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .arp-btn:hover {
+            background: var(--surface);
+            color: var(--text-1);
+            border-color: var(--text-3);
+        }
+        
+        .arp-btn.primary {
+            background: var(--text-1);
+            color: var(--surface);
+            border-color: var(--text-1);
+        }
+        
+        .arp-btn.primary:hover {
+            background: var(--text-2);
+            border-color: var(--text-2);
+        }
+        
+        .arp-btn.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .arp-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+        
+        .log-entry {
+            padding: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-2);
+        }
+        
+        .log-entry.critical {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
+        .log-timestamp {
+            color: var(--text-3);
+            margin-right: 8px;
+        }
+        
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-3);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+    <div class="topbar-left">
+        <div class="logo">Travel Router</div>
+        <div class="time" id="currentTime">--:--</div>
+    </div>
+    <div class="topbar-right">
+        <a href="/" class="logout-link" style="text-decoration: none;">← Dashboard</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="arp-header">
+        <h1 class="arp-title">ARP Spoofing Monitor</h1>
+    </div>
+
+    <!-- Status Overview -->
+    <div class="status-card">
+        <div class="status-card-title">Monitor Status</div>
+        <div class="info-grid" style="grid-template-columns: 1fr 1fr;">
+            <div>
+                <div class="info-row">
+                    <span class="info-key">Service Status</span>
+                    <span class="info-val">
+                        <span class="status-indicator inactive" id="serviceStatus">
+                            <span class="dot"></span>
+                            Checking...
+                        </span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Gateway IP</span>
+                    <span class="info-val" id="gatewayIP">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Current Gateway MAC</span>
+                    <span class="info-val" id="currentMAC">—</span>
+                </div>
+            </div>
+            <div>
+                <div class="info-row">
+                    <span class="info-key">Learned Baseline</span>
+                    <span class="info-val" id="learnedMAC">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Status</span>
+                    <span class="info-val" id="matchStatus">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Monitoring</span>
+                    <span class="info-val" id="monitoringStatus">—</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-row">
+            <button class="arp-btn primary" id="enableBtn" onclick="enableMonitor()">Enable</button>
+            <button class="arp-btn" id="disableBtn" onclick="disableMonitor()">Disable</button>
+            <button class="arp-btn" onclick="resetBaseline()">Reset Baseline</button>
+            <button class="arp-btn" onclick="refreshStatus()">Refresh</button>
+        </div>
+    </div>
+
+    <!-- Information -->
+    <div class="status-card">
+        <div class="status-card-title">How It Works</div>
+        <p style="color: var(--text-2); font-size: 13px; line-height: 1.6; margin: 0;">
+            The ARP monitor learns your gateway's MAC address and continuously checks for changes. 
+            If an attacker tries to impersonate your router (ARP spoofing / man-in-the-middle attack), 
+            the gateway MAC will change and the system will immediately trigger the kill switch to protect you.
+        </p>
+    </div>
+
+    <!-- Logs -->
+    <div class="status-card">
+        <div class="status-card-title">Recent Activity Logs</div>
+        <div class="log-container" id="logContainer">
+            <div class="empty-state">Loading logs...</div>
+        </div>
+        <button class="arp-btn" onclick="refreshLogs()" style="margin-top: 12px; width: auto;">Refresh Logs</button>
+    </div>
+</div>
+
+<script>
+// Update time
+function updateTime() {
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+    });
+    document.getElementById('currentTime').textContent = time;
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+// Load status
+async function loadStatus() {
+    try {
+        const response = await fetch('/api/arp/status');
+        const data = await response.json();
+        
+        if (data.success) {
+            const status = data.status;
+            
+            // Service status
+            const serviceStatusEl = document.getElementById('serviceStatus');
+            if (status.enabled) {
+                serviceStatusEl.className = 'status-indicator active';
+                serviceStatusEl.innerHTML = '<span class="dot"></span> Active';
+            } else {
+                serviceStatusEl.className = 'status-indicator inactive';
+                serviceStatusEl.innerHTML = '<span class="dot"></span> Inactive';
+            }
+            
+            // Update button states
+            document.getElementById('enableBtn').disabled = status.enabled;
+            document.getElementById('disableBtn').disabled = !status.enabled;
+            
+            // Gateway info
+            document.getElementById('gatewayIP').textContent = status.current_gateway_ip || 'Not connected';
+            document.getElementById('currentMAC').textContent = status.current_gateway_mac || '—';
+            document.getElementById('learnedMAC').textContent = status.learned_mac || 'Not learned yet';
+            
+            // Match status
+            if (status.learned_mac && status.current_gateway_mac) {
+                if (status.learned_mac.toLowerCase() === status.current_gateway_mac.toLowerCase()) {
+                    document.getElementById('matchStatus').innerHTML = '<span style="color: var(--green);">✓ Match</span>';
+                } else {
+                    document.getElementById('matchStatus').innerHTML = '<span style="color: var(--red);">✗ Mismatch!</span>';
+                }
+            } else {
+                document.getElementById('matchStatus').textContent = '—';
+            }
+            
+            // Monitoring status
+            document.getElementById('monitoringStatus').textContent = status.monitoring ? 'Active' : 'Inactive';
+        }
+    } catch (error) {
+        console.error('Failed to load ARP status:', error);
+    }
+}
+
+async function loadLogs() {
+    try {
+        const response = await fetch('/api/arp/logs');
+        const data = await response.json();
+        
+        const container = document.getElementById('logContainer');
+        
+        if (data.success && data.logs && data.logs.length > 0) {
+            container.innerHTML = data.logs.map(log => {
+                const isCritical = log.toLowerCase().includes('critical') || 
+                                 log.toLowerCase().includes('spoofing') ||
+                                 log.toLowerCase().includes('kill switch');
+                const logClass = isCritical ? 'log-entry critical' : 'log-entry';
+                
+                // Extract timestamp if present
+                const timestampMatch = log.match(/\[(.*?)\]/);
+                if (timestampMatch) {
+                    const timestamp = timestampMatch[1];
+                    const message = log.substring(log.indexOf(']') + 1).trim();
+                    return `<div class="${logClass}"><span class="log-timestamp">[${timestamp}]</span>${message}</div>`;
+                }
+                
+                return `<div class="${logClass}">${log}</div>`;
+            }).join('');
+        } else {
+            container.innerHTML = '<div class="empty-state">No logs available</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load logs:', error);
+        document.getElementById('logContainer').innerHTML = '<div class="empty-state">Failed to load logs</div>';
+    }
+}
+
+async function enableMonitor() {
+    if (!confirm('Enable ARP spoofing monitoring?\n\nThe monitor will learn your gateway MAC and alert if it changes.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/arp/enable', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('ARP monitoring enabled successfully!');
+            loadStatus();
+            loadLogs();
+        } else {
+            alert('Failed to enable monitoring:\n\n' + data.error);
+        }
+    } catch (error) {
+        alert('Error enabling monitoring:\n\n' + error.message);
+    }
+}
+
+async function disableMonitor() {
+    if (!confirm('Disable ARP spoofing monitoring?\n\nWARNING: You will not be protected against ARP attacks.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/arp/disable', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('ARP monitoring disabled.');
+            loadStatus();
+        } else {
+            alert('Failed to disable monitoring:\n\n' + data.error);
+        }
+    } catch (error) {
+        alert('Error disabling monitoring:\n\n' + error.message);
+    }
+}
+
+async function resetBaseline() {
+    if (!confirm('Reset learned gateway MAC?\n\nThe monitor will relearn the baseline on the next check.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/arp/reset', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Baseline reset successfully!\n\nMonitor will relearn gateway MAC.');
+            loadStatus();
+            loadLogs();
+        } else {
+            alert('Failed to reset baseline:\n\n' + data.error);
+        }
+    } catch (error) {
+        alert('Error resetting baseline:\n\n' + error.message);
+    }
+}
+
+function refreshStatus() {
+    loadStatus();
+    loadLogs();
+}
+
+function refreshLogs() {
+    loadLogs();
+}
+
+// Auto-refresh every 5 seconds
+setInterval(() => {
+    loadStatus();
+}, 5000);
+
+// Load initial data
+loadStatus();
+loadLogs();
+</script>
+
+</body>
+</html>

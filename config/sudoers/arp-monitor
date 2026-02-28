@@ -1,0 +1,8 @@
+# Allow www-data user (Flask) to control ARP monitor
+# Location: /etc/sudoers.d/arp-monitor
+
+www-data ALL=(ALL) NOPASSWD: /bin/rm -f /run/arp-monitor/gateway-mac
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart arp-monitor.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl enable --now arp-monitor.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl disable --now arp-monitor.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl status arp-monitor.service
