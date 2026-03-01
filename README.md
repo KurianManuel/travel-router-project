@@ -28,7 +28,7 @@ Raspberry Pi-based portable VPN gateway with advanced security features.
 ```
 travel-router-project/
 ├── scripts/           # Backend scripts
-│   ├── network/      # WiFi management
+│   ├── network/      # Connection management
 │   ├── security/     # Firewall, MAC manager
 │   └── monitoring/   # Status, watchdog, ARP monitor
 ├── web-interface/    # Flask web app
@@ -38,7 +38,8 @@ travel-router-project/
 ├── config/           # Configuration files
 │   ├── system/      # System configs
 │   └── sudoers/     # Sudo permissions
-└── systemd/          # Systemd service files
+├── systemd/          # Systemd service files
+└── docs/            # Documentation
 ```
 
 ## Security Architecture
@@ -71,7 +72,7 @@ Current version: 1.1.0 (ARP Spoofing Detection)
 
 ### Changelog
 
-### v1.1.0 (2024-03-01)
+#### v1.1.0 (2024-03-01)
 - Added ARP spoofing / MITM detection system
 - Real-time gateway MAC address monitoring
 - Automatic kill switch on attack detection
