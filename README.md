@@ -11,6 +11,7 @@ Raspberry Pi-based portable VPN gateway with advanced security features.
 - **MAC Address Privacy** - Randomize or clone MAC addresses
 - **Power Management** - Web-based shutdown/reboot controls
 - **ARP Spoofing Detection** - Real-time monitoring for man-in-the-middle attacks
+- **System Monitor** - Real-time system monitoring
 - **Web Dashboard** - Real-time monitoring and control 
 
 ## Security Features
@@ -68,9 +69,16 @@ travel-router-project/
 
 ## Version
 
-Current version: 1.1.0 (ARP Spoofing Detection)
+Current version: 1.2.0(System monitoring)
 
 ### Changelog
+
+#### v1.2.0 (2024-03-02)
+- Added System monitor module
+- Real-time CPU and memory usage tracking
+- Network interface monitoring
+- System uptime and load monitoring
+- Integrated monitoring into web dashboard
 
 #### v1.1.0 (2024-03-01)
 - Added ARP spoofing / MITM detection system
