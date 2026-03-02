@@ -1,0 +1,27 @@
+[Unit]
+Description=System Monitor - Collect system vitals
+Documentation=man:system-monitor(8)
+After=local-fs.target
+Before=network-pre.target
+DefaultDependencies=no
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/system-monitor.py
+Restart=always
+RestartSec=5
+
+# Priority - run before other services
+Nice=-5
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=system-monitor
+
+[Install]
+WantedBy=multi-user.target

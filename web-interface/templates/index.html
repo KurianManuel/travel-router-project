@@ -128,6 +128,59 @@
             </div>
 
         </div>
+	
+<div class="info-card">
+    <div class="info-card-head">System Stats</div>
+    
+    <div class="info-row">
+        <span class="info-key">CPU Usage</span>
+        <span class="info-val">
+            <span id="cpuUsage">—</span>%
+            <span class="stat-bar">
+                <span class="stat-bar-fill" id="cpuBar" style="width: 0%"></span>
+            </span>
+        </span>
+    </div>
+    
+    <div class="info-row">
+        <span class="info-key">Memory</span>
+        <span class="info-val">
+            <span id="memoryUsage">—</span> MB (<span id="memoryPercent">—</span>%)
+            <span class="stat-bar">
+                <span class="stat-bar-fill" id="memoryBar" style="width: 0%"></span>
+            </span>
+        </span>
+    </div>
+    
+    <div class="info-row">
+        <span class="info-key">Storage</span>
+        <span class="info-val">
+            <span id="storageUsed">—</span> / <span id="storageTotal">—</span> GB
+            (<span id="storagePercent">—</span>%)
+        </span>
+    </div>
+    
+    <div class="info-row">
+        <span class="info-key">Network</span>
+        <span class="info-val">
+            ↓ <span id="netRx">—</span> KB/s 
+            ↑ <span id="netTx">—</span> KB/s
+        </span>
+    </div>
+    
+    <div class="info-row">
+        <span class="info-key">Temperature</span>
+        <span class="info-val">
+            <span id="cpuTemp">—</span>°C
+            <span id="tempWarning" style="color: var(--red); display: none;">⚠️ High</span>
+        </span>
+    </div>
+    
+    <div class="info-row">
+        <span class="info-key">Uptime</span>
+        <span class="info-val" id="systemUptime">—</span>
+    </div>
+</div>
 
         <!-- Gateway controls -->
         <div class="section-title">Gateway Controls</div>

@@ -336,3 +336,85 @@ setInterval(checkArpAlerts, 10000);
 if (document.getElementById('dashboard').classList.contains('active')) {
     checkArpAlerts();
 }
+
+// ═══════════════════════════════════════════════════════════
+// System Stats Monitor
+// ═══════════════════════════════════════════════════════════
+
+async function updateSystemStats() {
+    try {
+        const response = await fetch('/api/system/stats');
+        const data = await response.json();
+        
+        if (data.success && data.stats) {
+            const stats = data.stats;
+            
+            // CPU Usage
+            if (stats.cpu) {
+                const cpuPercent = stats.cpu.percent;
+                document.getElementById('cpuUsage').textContent = cpuPercent.toFixed(1);
+                
+                const cpuBar = document.getElementById('cpuBar');
+                cpuBar.style.width = cpuPercent + '%';
+                
+                cpuBar.className = 'stat-bar-fill';
+                if (cpuPercent > 80) cpuBar.classList.add('danger');
+                else if (cpuPercent > 60) cpuBar.classList.add('warning');
+            }
+            
+            // Memory Usage
+            if (stats.memory) {
+                document.getElementById('memoryUsage').textContent = stats.memory.used_mb.toFixed(0);
+                document.getElementById('memoryPercent').textContent = stats.memory.percent.toFixed(1);
+                
+                const memBar = document.getElementById('memoryBar');
+                memBar.style.width = stats.memory.percent + '%';
+                
+                memBar.className = 'stat-bar-fill';
+                if (stats.memory.percent > 80) memBar.classList.add('danger');
+                else if (stats.memory.percent > 60) memBar.classList.add('warning');
+            }
+            
+            // Storage Usage
+            if (stats.storage) {
+                document.getElementById('storageUsed').textContent = stats.storage.used_gb.toFixed(1);
+                document.getElementById('storageTotal').textContent = stats.storage.total_gb.toFixed(1);
+                document.getElementById('storagePercent').textContent = stats.storage.percent.toFixed(1);
+            }
+            
+            // Network Usage
+            if (stats.network) {
+                document.getElementById('netRx').textContent = stats.network.rx_kbps.toFixed(1);
+                document.getElementById('netTx').textContent = stats.network.tx_kbps.toFixed(1);
+            }
+            
+            // Temperature
+            if (stats.temperature && stats.temperature.celsius) {
+                const temp = stats.temperature.celsius;
+                document.getElementById('cpuTemp').textContent = temp.toFixed(1);
+                
+                const tempWarning = document.getElementById('tempWarning');
+                if (temp > 70) {
+                    tempWarning.style.display = 'inline';
+                } else {
+                    tempWarning.style.display = 'none';
+                }
+            }
+            
+            // Uptime
+            if (stats.uptime) {
+                document.getElementById('systemUptime').textContent = stats.uptime.formatted;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to update system stats:', error);
+    }
+}
+
+// Update system stats every 5 seconds
+setInterval(updateSystemStats, 5000);
+
+// Initial update
+if (document.getElementById('dashboard').classList.contains('active')) {
+    updateSystemStats();
+}

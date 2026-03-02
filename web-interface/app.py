@@ -871,6 +871,32 @@ def api_arp_disable():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/system/stats', methods=['GET'])
+def api_system_stats():
+    """Get current system statistics"""
+    try:
+        stats_file = '/run/system-monitor/stats.json'
+        
+        if not os.path.exists(stats_file):
+            return jsonify({
+                'success': False,
+                'error': 'System monitor not running'
+            }), 503
+        
+        with open(stats_file, 'r') as f:
+            stats = json.load(f)
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     # Check if status script exists
     if not os.path.exists(STATUS_SCRIPT):
