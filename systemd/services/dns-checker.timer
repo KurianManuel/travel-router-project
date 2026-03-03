@@ -1,0 +1,11 @@
+[Unit]
+Description=DNS Integrity Checker Timer
+Documentation=man:dns-checker(8)
+
+[Timer]
+# Run every 5 minutes
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

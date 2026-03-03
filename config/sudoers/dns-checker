@@ -1,0 +1,7 @@
+# Allow www-data user (Flask) to control DNS checker
+# Location: /etc/sudoers.d/dns-checker
+
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl enable --now dns-checker.timer
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl disable --now dns-checker.timer
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl status dns-checker.timer
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl list-timers dns-checker.timer

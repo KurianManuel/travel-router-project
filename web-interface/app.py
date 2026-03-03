@@ -717,9 +717,7 @@ def api_mac_regenerate():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ═══════════════════════════════════════════════════════════
 # ARP Monitor Routes
-# ═══════════════════════════════════════════════════════════
 
 @app.route('/arp-monitor')
 def arp_monitor_page():
@@ -896,6 +894,140 @@ def api_system_stats():
             'success': False,
             'error': str(e)
         }), 500
+
+# DNS Checker
+
+@app.route('/dns-checker')
+def dns_checker_page():
+    """DNS Checker management page"""
+    return render_template('dns-checker.html')
+
+@app.route('/api/dns/check', methods=['POST'])
+def api_dns_check():
+    """Trigger DNS integrity check"""
+    try:
+        result = subprocess.run(
+            ['/usr/local/sbin/dns-checker.py', '--once'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        return jsonify({
+            'success': result.returncode == 0,
+            'output': result.stdout + result.stderr
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/dns/status', methods=['GET'])
+def api_dns_status():
+    """Get DNS checker status"""
+    try:
+        # Check if timer is active
+        timer_result = subprocess.run(
+            ['systemctl', 'is-active', 'dns-checker.timer'],
+            capture_output=True,
+            text=True
+        )
+        
+        enabled = timer_result.stdout.strip() == 'active'
+        
+        # Get next run time
+        next_run = None
+        if enabled:
+            list_result = subprocess.run(
+                ['systemctl', 'list-timers', 'dns-checker.timer', '--no-pager'],
+                capture_output=True,
+                text=True
+            )
+            
+            # Parse output for next run time
+            for line in list_result.stdout.split('\n'):
+                if 'dns-checker.timer' in line:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        next_run = ' '.join(parts[:2])
+        
+        return jsonify({
+            'success': True,
+            'enabled': enabled,
+            'next_run': next_run
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/dns/logs', methods=['GET'])
+def api_dns_logs():
+    """Get recent DNS checker logs"""
+    try:
+        log_file = '/var/log/dns-checker.log'
+        
+        if not os.path.exists(log_file):
+            return jsonify({'success': True, 'logs': []})
+        
+        result = subprocess.run(
+            ['tail', '-100', log_file],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode == 0:
+            logs = result.stdout.strip().split('\n')
+            logs = [line for line in logs if line]
+            logs.reverse()
+            
+            return jsonify({'success': True, 'logs': logs})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to read logs'}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dns/enable', methods=['POST'])
+def api_dns_enable():
+    """Enable DNS checking"""
+    try:
+        result = subprocess.run(
+            ['sudo', 'systemctl', 'enable', '--now', 'dns-checker.timer'],
+            capture_output=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0:
+            return jsonify({'success': True, 'message': 'DNS checking enabled'})
+        else:
+            return jsonify({'success': False, 'error': result.stderr}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dns/disable', methods=['POST'])
+def api_dns_disable():
+    """Disable DNS checking"""
+    try:
+        result = subprocess.run(
+            ['sudo', 'systemctl', 'disable', '--now', 'dns-checker.timer'],
+            capture_output=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0:
+            return jsonify({'success': True, 'message': 'DNS checking disabled'})
+        else:
+            return jsonify({'success': False, 'error': result.stderr}), 500
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     # Check if status script exists

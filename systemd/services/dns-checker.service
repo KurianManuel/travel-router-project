@@ -1,0 +1,21 @@
+[Unit]
+Description=DNS Integrity Checker
+Documentation=man:dns-checker(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dns-checker.py --once
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dns-checker
+
+[Install]
+WantedBy=multi-user.target
