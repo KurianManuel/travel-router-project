@@ -14,7 +14,7 @@ import json
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'change-this-to-a-random-secret-key-in-production'
+app.secret_key = os.urandom(24)
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
