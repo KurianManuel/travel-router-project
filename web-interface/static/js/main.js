@@ -8,7 +8,8 @@
  *   1. api.js
  *   2. ui.js
  *   3. auth.js
- *   4. main.js   ← this file
+ *   4. navigation.js
+ *   5. main.js   ← this file
  */
 
 'use strict';
@@ -53,6 +54,12 @@ function showDashboard() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').classList.add('active');
     startStatusPolling();
+    
+    // Start security log polling
+    startSecurityLogPolling();
+    
+    // Start ARP alert checking
+    checkArpAlerts();
 }
 
 // ── Gateway control actions ───────────────────────────────────
@@ -114,10 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTime();               // ui.js
     setInterval(updateTime, 1000);
 });
-// ═══════════════════════════════════════════════════════════
+
 // MAC Address Configuration Functions
-// Add to main.js or create separate mac-config.js
-// ═══════════════════════════════════════════════════════════
 
 let currentMacConfig = {
     current_mac: '',
@@ -226,9 +231,9 @@ async function saveMacConfig() {
             alert('MAC configuration saved!\n\nChanges will apply on next reboot.');
             closeMacConfig();
             
-            // Refresh dashboard to show new mode
+            // Refresh dashboard
             setTimeout(() => {
-                updateNetworkDetails();
+                pollStatus();
             }, 500);
         } else {
             alert('Failed to save configuration:\n\n' + data.error);
@@ -259,7 +264,7 @@ async function regenerateMac() {
             
             // Refresh dashboard
             setTimeout(() => {
-                updateNetworkDetails();
+                pollStatus();
             }, 1000);
         } else {
             alert('Failed to regenerate MAC:\n\n' + data.error);
@@ -277,9 +282,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ═══════════════════════════════════════════════════════════
 // ARP Monitor Alert System
-// ═══════════════════════════════════════════════════════════
 
 let lastAlertCheck = 0;
 
@@ -312,12 +315,12 @@ async function checkArpAlerts() {
 }
 
 function showAlert(title, message) {
+    const alertNotification = document.getElementById('alertNotification');
+    if (!alertNotification) return;
+    
     document.getElementById('alertTitle').textContent = title;
     document.getElementById('alertMessage').textContent = message;
-    document.getElementById('alertNotification').classList.add('show');
-    
-    // Play alert sound (if you want to add one later)
-    // new Audio('/static/sounds/alert.mp3').play().catch(e => {});
+    alertNotification.classList.add('show');
     
     // Auto-dismiss after 30 seconds
     setTimeout(() => {
@@ -326,95 +329,148 @@ function showAlert(title, message) {
 }
 
 function closeAlert() {
-    document.getElementById('alertNotification').classList.remove('show');
-}
-
-// Check for ARP alerts every 10 seconds
-setInterval(checkArpAlerts, 10000);
-
-// Check immediately on load
-if (document.getElementById('dashboard').classList.contains('active')) {
-    checkArpAlerts();
-}
-
-// ═══════════════════════════════════════════════════════════
-// System Stats Monitor
-// ═══════════════════════════════════════════════════════════
-
-async function updateSystemStats() {
-    try {
-        const response = await fetch('/api/system/stats');
-        const data = await response.json();
-        
-        if (data.success && data.stats) {
-            const stats = data.stats;
-            
-            // CPU Usage
-            if (stats.cpu) {
-                const cpuPercent = stats.cpu.percent;
-                document.getElementById('cpuUsage').textContent = cpuPercent.toFixed(1);
-                
-                const cpuBar = document.getElementById('cpuBar');
-                cpuBar.style.width = cpuPercent + '%';
-                
-                cpuBar.className = 'stat-bar-fill';
-                if (cpuPercent > 80) cpuBar.classList.add('danger');
-                else if (cpuPercent > 60) cpuBar.classList.add('warning');
-            }
-            
-            // Memory Usage
-            if (stats.memory) {
-                document.getElementById('memoryUsage').textContent = stats.memory.used_mb.toFixed(0);
-                document.getElementById('memoryPercent').textContent = stats.memory.percent.toFixed(1);
-                
-                const memBar = document.getElementById('memoryBar');
-                memBar.style.width = stats.memory.percent + '%';
-                
-                memBar.className = 'stat-bar-fill';
-                if (stats.memory.percent > 80) memBar.classList.add('danger');
-                else if (stats.memory.percent > 60) memBar.classList.add('warning');
-            }
-            
-            // Storage Usage
-            if (stats.storage) {
-                document.getElementById('storageUsed').textContent = stats.storage.used_gb.toFixed(1);
-                document.getElementById('storageTotal').textContent = stats.storage.total_gb.toFixed(1);
-                document.getElementById('storagePercent').textContent = stats.storage.percent.toFixed(1);
-            }
-            
-            // Network Usage
-            if (stats.network) {
-                document.getElementById('netRx').textContent = stats.network.rx_kbps.toFixed(1);
-                document.getElementById('netTx').textContent = stats.network.tx_kbps.toFixed(1);
-            }
-            
-            // Temperature
-            if (stats.temperature && stats.temperature.celsius) {
-                const temp = stats.temperature.celsius;
-                document.getElementById('cpuTemp').textContent = temp.toFixed(1);
-                
-                const tempWarning = document.getElementById('tempWarning');
-                if (temp > 70) {
-                    tempWarning.style.display = 'inline';
-                } else {
-                    tempWarning.style.display = 'none';
-                }
-            }
-            
-            // Uptime
-            if (stats.uptime) {
-                document.getElementById('systemUptime').textContent = stats.uptime.formatted;
-            }
-        }
-    } catch (error) {
-        console.error('Failed to update system stats:', error);
+    const alertNotification = document.getElementById('alertNotification');
+    if (alertNotification) {
+        alertNotification.classList.remove('show');
     }
 }
 
-// Update system stats every 5 seconds
-setInterval(updateSystemStats, 5000);
+// Check for ARP alerts every 10 seconds (only if on dashboard)
+setInterval(() => {
+    if (document.getElementById('dashboard') && 
+        document.getElementById('dashboard').classList.contains('active')) {
+        checkArpAlerts();
+    }
+}, 10000);
 
-// Initial update
-if (document.getElementById('dashboard').classList.contains('active')) {
-    updateSystemStats();
+// ═══════════════════════════════════════════════════════════
+// Security Log Functions
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Load and display security logs
+ */
+function loadSecurityLogs() {
+    const container = document.getElementById('securityLogContainer');
+    if (!container) return; // Not on dashboard page
+    
+    fetch('/api/security/logs', {
+        credentials: 'include'  // IMPORTANT: Include session cookie
+    })
+        .then(response => {
+            if (response.status === 401) {
+                // Not authenticated - redirect to login
+                console.log('Not authenticated, reloading page');
+                location.reload();
+                return null;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data) return; // Null from 401 response
+            
+            if (!data.success) {
+                container.innerHTML = '<div class="log-empty">Error loading logs: ' + (data.error || 'Unknown error') + '</div>';
+                return;
+            }
+            
+            if (!data.logs || data.logs.length === 0) {
+                container.innerHTML = '<div class="log-empty">No security events recorded</div>';
+                return;
+            }
+            
+            let html = '';
+            data.logs.forEach(log => {
+                const severityClass = log.severity || 'info';
+                const timestamp = log.timestamp || '';
+                const source = log.source || 'System';
+                const message = formatLogMessage(log.log);
+                
+                html += `
+                    <div class="log-entry ${severityClass}">
+                        <div class="log-timestamp">${timestamp}</div>
+                        <div class="log-source">${source}</div>
+                        <div class="log-message">${message}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading security logs:', error);
+            if (container) {
+                container.innerHTML = '<div class="log-empty">Failed to load security logs</div>';
+            }
+        });
+}
+
+/**
+ * Format log message for display
+ */
+function formatLogMessage(log) {
+    // Remove timestamp and source prefix if present
+    let message = log;
+    
+    // Remove common log prefixes
+    message = message.replace(/^\[.*?\]\s*/, '');  // Remove [timestamp]
+    message = message.replace(/^.*?:\s*/, '');      // Remove "source: "
+    
+    // Highlight important keywords
+    message = message.replace(/(lockdown|attack|spoofing|mismatch|failed|critical)/gi, 
+        '<strong style="color: var(--red);">$1</strong>');
+    message = message.replace(/(triggered|detected|warning)/gi, 
+        '<strong style="color: var(--amber);">$1</strong>');
+    message = message.replace(/(success|passed|verified)/gi, 
+        '<strong style="color: var(--green);">$1</strong>');
+    
+    return message;
+}
+
+/**
+ * Refresh security log manually
+ */
+function refreshSecurityLog() {
+    const container = document.getElementById('securityLogContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-3);">Refreshing...</div>';
+    loadSecurityLogs();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Auto-refresh Security Logs (only when authenticated)
+// ═══════════════════════════════════════════════════════════
+
+let securityLogInterval = null;
+
+/**
+ * Start security log polling
+ */
+function startSecurityLogPolling() {
+    // Load immediately
+    if (document.getElementById('securityLogContainer')) {
+        loadSecurityLogs();
+    }
+    
+    // Set up interval
+    if (securityLogInterval) {
+        clearInterval(securityLogInterval);
+    }
+    
+    securityLogInterval = setInterval(() => {
+        if (document.getElementById('securityLogContainer')) {
+            loadSecurityLogs();
+        }
+    }, 10000); // Every 10 seconds
+}
+
+/**
+ * Stop security log polling
+ */
+function stopSecurityLogPolling() {
+    if (securityLogInterval) {
+        clearInterval(securityLogInterval);
+        securityLogInterval = null;
+    }
 }

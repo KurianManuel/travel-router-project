@@ -4,7 +4,9 @@ Flask backend for Travel Router Web Interface
 Uses gateway-status.sh script for all system data
 """
 
-from flask import Flask, render_template, jsonify, session, request
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from functools import wraps
+from datetime import datetime, timedelta
 import subprocess
 import os
 import re
@@ -12,7 +14,9 @@ import json
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = 'change-this-to-a-random-secret-key-in-production'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
 # Configuration
 DEFAULT_PASSWORD = '12345'  # CHANGE THIS!
@@ -360,6 +364,39 @@ def get_mac_info():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Login route
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    """Handle login authentication"""
+    try:
+        data = request.json
+        password = data.get('password', '')
+        
+        if password == DEFAULT_PASSWORD:
+            session['authenticated'] = True
+            session.permanent = True  # Make session persist
+            return jsonify({'success': True, 'message': 'Login successful'})
+        else:
+            return jsonify({'success': False, 'message': 'Invalid password'}), 401
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Logout route
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    """Handle logout"""
+    session.clear()
+    return jsonify({'success': True})
+
+# Add this decorator for protected routes
+def require_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'authenticated' not in session or not session.get('authenticated'):
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/api/status')
 def api_status():
@@ -869,31 +906,143 @@ def api_arp_disable():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/system/stats', methods=['GET'])
-def api_system_stats():
-    """Get current system statistics"""
+# Security Logs API
+
+@app.route('/api/security/logs')
+@require_auth
+def get_security_logs():
+    """Aggregate security logs from all sources"""
     try:
-        stats_file = '/run/system-monitor/stats.json'
+        logs = []
         
-        if not os.path.exists(stats_file):
-            return jsonify({
-                'success': False,
-                'error': 'System monitor not running'
-            }), 503
+        # Read VPN/Gateway logs
+        try:
+            if os.path.exists('/var/log/vpn-gateway.log'):
+                with open('/var/log/vpn-gateway.log', 'r') as f:
+                    vpn_lines = f.readlines()[-50:]
+                    for line in vpn_lines:
+                        if line.strip():
+                            logs.append({
+                                'source': 'VPN',
+                                'log': line.strip(),
+                                'timestamp': extract_timestamp(line),
+                                'severity': determine_severity(line)
+                            })
+        except Exception as e:
+            print(f"Error reading VPN logs: {e}")
         
-        with open(stats_file, 'r') as f:
-            stats = json.load(f)
+        # Read ARP Monitor logs
+        try:
+            if os.path.exists('/var/log/arp-monitor.log'):
+                with open('/var/log/arp-monitor.log', 'r') as f:
+                    arp_lines = f.readlines()[-50:]
+                    for line in arp_lines:
+                        if line.strip():
+                            logs.append({
+                                'source': 'ARP Monitor',
+                                'log': line.strip(),
+                                'timestamp': extract_timestamp(line),
+                                'severity': determine_severity(line)
+                            })
+        except Exception as e:
+            print(f"Error reading ARP logs: {e}")
+        
+        # Read DNS Checker logs
+        try:
+            if os.path.exists('/var/log/dns-checker.log'):
+                with open('/var/log/dns-checker.log', 'r') as f:
+                    dns_lines = f.readlines()[-50:]
+                    for line in dns_lines:
+                        if line.strip():
+                            logs.append({
+                                'source': 'DNS Checker',
+                                'log': line.strip(),
+                                'timestamp': extract_timestamp(line),
+                                'severity': determine_severity(line)
+                            })
+        except Exception as e:
+            print(f"Error reading DNS logs: {e}")
+        
+        # Read Watchdog logs
+        try:
+            result = subprocess.run(
+                ['journalctl', '-u', 'watchdog-tier1.service', '-n', '30', '--no-pager'],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.split('\n'):
+                if any(word in line.lower() for word in ['triggering lockdown', 'wg0 missing', 'handshake stale']):
+                    logs.append({
+                        'source': 'Watchdog',
+                        'log': line.strip(),
+                        'timestamp': extract_timestamp(line),
+                        'severity': 'critical'
+                    })
+        except Exception as e:
+            print(f"Error reading watchdog logs: {e}")
+        
+        # Sort by timestamp (most recent first)
+        logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
         return jsonify({
             'success': True,
-            'stats': stats
+            'logs': logs[:100]
         })
-        
+    
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        print(f"Error in get_security_logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def extract_timestamp(line):
+    """Extract timestamp from log line"""
+    patterns = [
+        r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]',
+        r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})',
+        r'(\d{2}:\d{2}:\d{2})',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, line)
+        if match:
+            return match.group(1)
+    return ''
+
+def determine_severity(line):
+    """Determine log severity from content"""
+    line_lower = line.lower()
+    if any(word in line_lower for word in ['critical', 'lockdown', 'attack', 'spoofing', 'spoof']):
+        return 'critical'
+    elif any(word in line_lower for word in ['warning', 'mismatch', 'failed', 'stale']):
+        return 'warning'
+    elif 'error' in line_lower:
+        return 'error'
+    else:
+        return 'info'
+
+# System Monitor Page Route
+
+@app.route('/system-monitor')
+def system_monitor():
+    if 'authenticated' not in session or not session.get('authenticated'):
+        return redirect(url_for('login'))
+    return render_template('system-monitor.html')
+
+# System Stats API (for system-monitor page)
+
+@app.route('/api/system/stats')
+def get_system_stats():
+    """Get system statistics from system-monitor service"""
+    if 'authenticated' not in session or not session.get('authenticated'):
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    try:
+        stats_file = '/run/system-monitor/stats.json'
+        if os.path.exists(stats_file):
+            with open(stats_file, 'r') as f:
+                stats = json.load(f)
+            return jsonify({'success': True, 'stats': stats})
+        else:
+            return jsonify({'success': False, 'error': 'Stats file not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # DNS Checker
 

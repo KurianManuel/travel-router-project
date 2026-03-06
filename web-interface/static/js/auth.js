@@ -34,47 +34,71 @@ function initAuth() {
 /**
  * Handles the login form submission.
  */
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-
-    const pw         = document.getElementById('password').value;
-    const btnText    = document.getElementById('loginBtnText');
-    const spinner    = document.getElementById('loginSpinner');
-
+    
+    const password = document.getElementById('password').value;
+    const submitBtn = document.querySelector('.login-btn');
+    const btnText = document.getElementById('loginBtnText');
+    const spinner = document.getElementById('loginSpinner');
+    
     // Show loading state
-    btnText.classList.add('hidden');
-    spinner.style.display = 'block';
-
-    // Simulate a brief delay so the UI feels responsive
-    setTimeout(() => {
-        if (pw === DEFAULT_PASSWORD) {
-            sessionStorage.setItem(SESSION_KEY, 'true');
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    submitBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',  // IMPORTANT: Include cookies
+            body: JSON.stringify({ password: password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Store authentication state
+            sessionStorage.setItem('authenticated', 'true');
+            
+            // Show dashboard
             showDashboard();
         } else {
-            alert('Incorrect password.');
-            btnText.classList.remove('hidden');
+            alert('Invalid password');
+            btnText.style.display = 'inline';
             spinner.style.display = 'none';
-            document.getElementById('password').value = '';
+            submitBtn.disabled = false;
         }
-    }, 350);
+    } catch (error) {
+        alert('Login failed: ' + error.message);
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 }
 
-/**
- * Clears the session and returns to the login screen.
- * Called by the logout button in index.html.
- */
+function isAuthenticated() {
+    return sessionStorage.getItem('authenticated') === 'true';
+}
+
+function initAuth() {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+}
+
 function logout() {
-    sessionStorage.removeItem(SESSION_KEY);
-
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('dashboard').classList.remove('active');
-    document.getElementById('password').value = '';
-
-    // Reset login button state
-    document.getElementById('loginBtnText').classList.remove('hidden');
-    document.getElementById('loginSpinner').style.display = 'none';
-
-    stopStatusPolling();
+    sessionStorage.removeItem('authenticated');
+    
+    fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include'
+    }).then(() => {
+        location.reload();
+    });
 }
 
 // ── Power menu functions ──────────────────────────────────────

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitor - Travel Router</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<div class="dashboard active">
+    <!-- Top bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="hamburger" id="hamburger" aria-label="Menu">
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
+            </button>
+            <div class="topbar-mark">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <span class="topbar-title">System Monitor</span>
+        </div>
+        <div class="topbar-right">
+            <button class="logout-link" onclick="location.href='/'">← Dashboard</button>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="/">Dashboard</a></li>
+            <li><a href="/wifi">WiFi Manager</a></li>
+            <li><a href="#" onclick="event.preventDefault(); toggleSidebar(); alert('Open from Dashboard');">MAC Manager</a></li>
+            <li><a href="/arp-monitor">ARP Monitor</a></li>
+            <li><a href="/dns-checker">DNS Checker</a></li>
+            <li><a href="/system-monitor" class="active">System Monitor</a></li>
+        </ul>
+        <div class="sidebar-power">
+            <button class="power-toggle" id="powerToggle">Power</button>
+            <div class="power-options-sidebar" id="powerOptions">
+                <div class="power-option-sidebar" onclick="rebootSystem()">
+                    <span class="power-option-label">Reboot</span>
+                    <span class="power-option-desc">Restart the system</span>
+                </div>
+                <div class="power-option-sidebar" onclick="shutdownSystem()">
+                    <span class="power-option-label">Shutdown</span>
+                    <span class="power-option-desc">Power off the system</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Page content -->
+    <div class="page">
+        
+        <div class="section-title">System Performance</div>
+        
+        <!-- System Stats Grid -->
+        <div class="status-grid">
+            <div class="stat-cell">
+                <div class="stat-name">CPU Usage</div>
+                <div class="stat-value" id="cpuUsage">—</div>
+                <div class="stat-sub">
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="cpuBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Memory</div>
+                <div class="stat-value" id="memoryUsage">—</div>
+                <div class="stat-sub" id="memoryPercent">—</div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Storage</div>
+                <div class="stat-value" id="storageUsed">—</div>
+                <div class="stat-sub" id="storagePercent">—</div>
+            </div>
+
+            <div class="stat-cell">
+                <div class="stat-name">Temperature</div>
+                <div class="stat-value" id="cpuTemp">—</div>
+                <div class="stat-sub">CPU Temp</div>
+            </div>
+        </div>
+
+        <!-- Detailed Stats -->
+        <div class="section-title">Detailed Metrics</div>
+        <div class="info-grid">
+            
+            <div class="info-card">
+                <div class="info-card-head">Memory Details</div>
+                <div class="info-row">
+                    <span class="info-key">Total</span>
+                    <span class="info-val" id="memoryTotal">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Used</span>
+                    <span class="info-val" id="memoryUsedDetail">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Available</span>
+                    <span class="info-val" id="memoryAvailable">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Usage</span>
+                    <span class="info-val">
+                        <span id="memoryPercentDetail">—</span>
+                        <span class="stat-bar">
+                            <span class="stat-bar-fill" id="memoryBar" style="width: 0%"></span>
+                        </span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-head">Storage Details</div>
+                <div class="info-row">
+                    <span class="info-key">Total</span>
+                    <span class="info-val" id="storageTotal">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Used</span>
+                    <span class="info-val" id="storageUsedDetail">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Free</span>
+                    <span class="info-val" id="storageFree">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-key">Usage</span>
+                    <span class="info-val" id="storagePercentDetail">—</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Network Stats -->
+        <div class="section-title">Network Throughput</div>
+        <div class="info-card">
+            <div class="info-card-head">Real-time Network Traffic</div>
+            
+            <div class="info-row">
+                <span class="info-key">Download Rate</span>
+                <span class="info-val">↓ <span id="netRx">—</span> KB/s</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-key">Upload Rate</span>
+                <span class="info-val">↑ <span id="netTx">—</span> KB/s</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-key">Total Downloaded</span>
+                <span class="info-val" id="netTotalRx">—</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-key">Total Uploaded</span>
+                <span class="info-val" id="netTotalTx">—</span>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="section-title">System Information</div>
+        <div class="info-card">
+            <div class="info-card-head">Uptime & Load</div>
+            
+            <div class="info-row">
+                <span class="info-key">Uptime</span>
+                <span class="info-val" id="systemUptime">—</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-key">WiFi Signal</span>
+                <span class="info-val" id="wifiSignal">—</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/system-monitor.js') }}"></script>
+
+</body>
+</html>
